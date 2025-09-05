@@ -1,71 +1,832 @@
-{% extends "base.html" %}
-{% block content %}
-<h1>NDI Router</h1>
+{% extends "plugin_base.html" %}
+
+{% set plugin_config = {
+    'title': 'NDI Control & Streaming',
+    'icon': '🎥',
+    'description': 'Manage NDI devices and sources across your network',
+    'device_type': 'NDI Device',
+    'api_endpoint': 'ndi',
+    'active_label': 'Recording'
+} %}
+
+{% block plugin_controls %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="d-flex align-items-center justify-content-between">
 <div>
-  <label>Device:</label>
-  <select id="deviceSelect"></select>
+                    <h1 class="text-gradient mb-1">🎥 NDI Control & Streaming</h1>
+                    <p class="text-muted mb-0">Manage NDI devices and sources across your network</p>
+                </div>
+                <div class="connection-status online" id="connectionStatus">
+                    Connected
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5>🖥️ Device Selection</h5>
+                </div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label for="deviceSelect" class="form-label fw-semibold">Select NDI Device:</label>
+                        <select class="form-select" id="deviceSelect">
+                            <option value="">Loading devices...</option>
+                        </select>
+                    </div>
+                    <button type="button" class="btn btn-outline-primary btn-sm shadow-hover" id="refreshDevicesBtn">
+                        🔄 Refresh Devices
+                    </button>
+                </div>
 </div>
-<div>
-  <label>Source:</label>
-  <select id="sourceSelect"></select>
-</div>
-<div style="margin-top: 8px;">
-  <button id="btnStart">Start</button>
-  <button id="btnSetInput">Set Input</button>
-  <button id="btnStop">Stop</button>
-  <span id="msg" style="margin-left: 8px;"></span>
   </div>
 
-<script>
-async function loadDevices() {
-  const r = await fetch('/api/ndi/devices');
-  const j = await r.json();
-  const sel = document.getElementById('deviceSelect');
-  sel.innerHTML = '';
-  const devices = j.devices || {};
-  const ids = Object.keys(devices);
-  ids.forEach(id => {
-    const opt = document.createElement('option');
-    opt.value = id; opt.text = id;
-    sel.appendChild(opt);
-  });
-}
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5>📊 Device Status</h5>
+                </div>
+                <div class="card-body">
+                    <div id="deviceStatus">
+                        <div class="text-center text-muted py-3">
+                            <div class="mb-2">📱</div>
+                            <p class="mb-0">Select a device to view status</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-async function loadSources() {
-  const r = await fetch('/api/ndi/sources');
-  const j = await r.json();
-  const sel = document.getElementById('sourceSelect');
-  sel.innerHTML = '';
-  (j.sources || []).forEach(s => {
-    const opt = document.createElement('option'); opt.value = s; opt.text = s; sel.appendChild(opt);
-  });
-}
+    <div class="row mt-3">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5>📡 NDI Sources</h5>
+                    <button type="button" class="btn btn-sm btn-outline-light shadow-hover" id="refreshSourcesBtn">
+                        🔄 Refresh
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label for="sourceSelect" class="form-label fw-semibold">Available Sources:</label>
+                        <select class="form-select source-select" id="sourceSelect" size="5">
+                            <option value="">Loading sources...</option>
+                        </select>
+                    </div>
+                    <div class="mt-3 p-2 bg-light rounded">
+                        <small class="text-muted" id="sourceInfo">
+                            <span class="fw-semibold">💡 Tip:</span> Select a source to view details
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-async function send(action) {
-  const device_id = document.getElementById('deviceSelect').value;
-  const source = document.getElementById('sourceSelect').value;
-  const msg = document.getElementById('msg');
-  try {
-    const r = await fetch('/api/ndi/send', {
-      method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({device_id, source, action})
-    });
-    const j = await r.json();
-    if (!r.ok) throw new Error(j.detail || 'Request failed');
-    msg.textContent = 'OK'; msg.style.color = 'green';
-  } catch (e) {
-    msg.textContent = e.message || String(e); msg.style.color = 'red';
-  }
-}
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5>🎬 Viewer Control</h5>
+                </div>
+                <div class="card-body">
+                    <div class="btn-group d-flex mb-3" role="group">
+                        <button type="button" class="btn btn-success shadow-hover" id="startBtn">
+                            <div class="d-flex flex-column align-items-center">
+                                <span class="btn-icon">▶️</span>
+                                <small>Start</small>
+                            </div>
+                        </button>
+                        <button type="button" class="btn btn-warning shadow-hover" id="restartBtn">
+                            <div class="d-flex flex-column align-items-center">
+                                <span class="btn-icon">🔄</span>
+                                <small>Restart</small>
+                            </div>
+                        </button>
+                        <button type="button" class="btn btn-danger shadow-hover" id="stopBtn">
+                            <div class="d-flex flex-column align-items-center">
+                                <span class="btn-icon">⏹️</span>
+                                <small>Stop</small>
+                            </div>
+                        </button>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="setInputBtn" class="form-label fw-semibold">Quick Actions:</label>
+                        <button type="button" class="btn btn-outline-primary w-100 shadow-hover" id="setInputBtn">
+                            🔄 Set Input Source
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-document.getElementById('btnStart').onclick = () => send('start');
-document.getElementById('btnSetInput').onclick = () => send('set_input');
-document.getElementById('btnStop').onclick = () => send('stop');
+    <div class="row mt-3">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5>🎥 Recording Control</h5>
+                </div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label for="outputPath" class="form-label fw-semibold">📁 Output Path (optional):</label>
+                        <input type="text" class="form-control" id="outputPath" placeholder="/tmp/my_recording.mp4">
+                        <small class="form-text text-muted">💡 Leave empty for auto-generated filename</small>
+                    </div>
+                    
+                    <div class="btn-group d-flex mt-3" role="group">
+                        <button type="button" class="btn btn-danger shadow-hover" id="recordStartBtn">
+                            <div class="d-flex flex-column align-items-center">
+                                <span class="btn-icon">🔴</span>
+                                <small>Start</small>
+                            </div>
+                        </button>
+                        <button type="button" class="btn btn-secondary shadow-hover" id="recordStopBtn">
+                            <div class="d-flex flex-column align-items-center">
+                                <span class="btn-icon">⏹️</span>
+                                <small>Stop</small>
+                            </div>
+                        </button>
+                    </div>
+                    
+                    <div class="mt-3">
+                        <div id="recordingStatus" class="alert d-none">
+                            <strong>📼 Recording Status:</strong> <span id="recordingInfo"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-loadDevices();
-loadSources();
-setInterval(loadDevices, 5000);
-</script>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5>⚙️ Process Monitor</h5>
+                </div>
+                <div class="card-body">
+                    <button type="button" class="btn btn-info w-100 mb-3 shadow-hover" id="listProcessesBtn">
+                        📋 List Running Processes
+                    </button>
+                    
+                    <div id="processInfo" class="p-3 bg-light rounded">
+                        <div class="text-center text-muted">
+                            <div class="mb-2">🔍</div>
+                            <p class="mb-0">Click "List Running Processes" to view active NDI processes</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-3">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5>📝 Activity Log</h5>
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-sm btn-outline-light shadow-hover" id="autoRefreshToggle">
+                            🔄 Auto-refresh: <span id="autoRefreshStatus">Off</span>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-light shadow-hover" id="clearLogBtn">
+                            🗑️ Clear
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div id="activityLog" class="activity-log" style="height: 280px; overflow-y: scroll; padding: 15px; margin: 0;">
+                        <div class="text-muted">
+                            <span class="text-info">[System]</span> Activity will appear here...
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-3">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5>⚡ Quick Actions</h5>
+                </div>
+                <div class="card-body quick-actions">
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <button type="button" class="btn btn-outline-primary w-100 shadow-hover" id="statusBtn">
+                                <span class="btn-icon">ℹ️</span>
+                                Get Status
+                            </button>
+                        </div>
+                        <div class="col-md-3">
+                            <button type="button" class="btn btn-outline-success w-100 shadow-hover" id="startCurrentBtn">
+                                <span class="btn-icon">▶️</span>
+                                Start Current
+                            </button>
+                        </div>
+                        <div class="col-md-3">
+                            <button type="button" class="btn btn-outline-warning w-100 shadow-hover" id="restartCurrentBtn">
+                                <span class="btn-icon">🔄</span>
+                                Restart Current
+                            </button>
+                        </div>
+                        <div class="col-md-3">
+                            <button type="button" class="btn btn-outline-danger w-100 shadow-hover pulse" id="emergencyStopBtn">
+                                <span class="btn-icon">⚠️</span>
+                                Emergency Stop
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+</div>
+  </div>
+
 {% endblock %}
 
+{% block scripts %}
+<script>
+let selectedDevice = null;
+let selectedSource = null;
+let autoRefresh = false;
+let autoRefreshInterval = null;
+
+// Load data on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadDevices();
+    loadSources();
+    setupEventListeners();
+    logActivity('NDI Control Interface loaded', 'info');
+});
+
+function setupEventListeners() {
+    // Device selection
+    document.getElementById('deviceSelect').addEventListener('change', function() {
+        selectedDevice = this.value;
+        updateDeviceStatus();
+        logActivity(`Selected device: ${selectedDevice}`, 'info');
+    });
+
+    // Source selection
+    document.getElementById('sourceSelect').addEventListener('change', function() {
+        selectedSource = this.value;
+        updateSourceInfo();
+        logActivity(`Selected source: ${selectedSource}`, 'info');
+    });
+
+    // Refresh buttons
+    document.getElementById('refreshDevicesBtn').addEventListener('click', loadDevices);
+    document.getElementById('refreshSourcesBtn').addEventListener('click', () => loadSources(true));
+
+    // Viewer controls
+    document.getElementById('startBtn').addEventListener('click', startViewer);
+    document.getElementById('restartBtn').addEventListener('click', restartViewer);
+    document.getElementById('stopBtn').addEventListener('click', stopViewer);
+    document.getElementById('setInputBtn').addEventListener('click', setInput);
+
+    // Recording controls
+    document.getElementById('recordStartBtn').addEventListener('click', startRecording);
+    document.getElementById('recordStopBtn').addEventListener('click', stopRecording);
+
+    // Process monitor
+    document.getElementById('listProcessesBtn').addEventListener('click', listProcesses);
+
+    // Quick actions
+    document.getElementById('statusBtn').addEventListener('click', getStatus);
+    document.getElementById('startCurrentBtn').addEventListener('click', startCurrent);
+    document.getElementById('restartCurrentBtn').addEventListener('click', restartCurrent);
+    document.getElementById('emergencyStopBtn').addEventListener('click', emergencyStop);
+
+    // Utility buttons
+    document.getElementById('autoRefreshToggle').addEventListener('click', toggleAutoRefresh);
+    document.getElementById('clearLogBtn').addEventListener('click', clearLog);
+}
+
+async function loadDevices() {
+    try {
+        const response = await fetch('/api/ndi/devices');
+        
+        // Check if response is ok before trying to parse JSON
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`HTTP ${response.status}: ${errorText.substring(0, 100)}...`);
+        }
+        
+        const data = await response.json();
+        
+        const select = document.getElementById('deviceSelect');
+        select.innerHTML = '<option value="">Select a device...</option>';
+        
+        if (data.devices && Object.keys(data.devices).length > 0) {
+            Object.values(data.devices).forEach(device => {
+                const option = document.createElement('option');
+                option.value = device.device_id;
+                const status = device.online ? 'Online' : 'Offline';
+                const viewerStatus = device.viewer_running ? ' (Viewer Running)' : '';
+                const recordingStatus = device.recording ? ' (Recording)' : '';
+                option.textContent = `${device.device_id} - ${status}${viewerStatus}${recordingStatus}`;
+                select.appendChild(option);
+            });
+            logActivity(`Loaded ${Object.keys(data.devices).length} NDI devices`, 'success');
+        } else {
+            const option = document.createElement('option');
+            option.value = '';
+            option.textContent = 'No NDI devices found';
+            option.disabled = true;
+            select.appendChild(option);
+            logActivity('No NDI devices found', 'warning');
+        }
+    } catch (error) {
+        console.error('Error loading devices:', error);
+        logActivity(`Error loading devices: ${error.message}`, 'error');
+        
+        // Show error in UI
+        const select = document.getElementById('deviceSelect');
+        select.innerHTML = '<option value="">Select a device...</option>';
+        const option = document.createElement('option');
+        option.value = '';
+        option.textContent = `Error: ${error.message.substring(0, 50)}...`;
+        option.disabled = true;
+        select.appendChild(option);
+    }
+}
+
+async function loadSources(forceRefresh = false) {
+    try {
+        const endpoint = forceRefresh ? '/api/ndi/sources/refresh' : '/api/ndi/sources';
+        const response = await fetch(endpoint);
+        
+        // Check if response is ok before trying to parse JSON
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`HTTP ${response.status}: ${errorText.substring(0, 100)}...`);
+        }
+        
+        const data = await response.json();
+        
+        const select = document.getElementById('sourceSelect');
+        select.innerHTML = '';
+        
+        if (data.sources && data.sources.length === 0) {
+            const option = document.createElement('option');
+            option.value = '';
+            option.textContent = data.discovery_error ? `Error: ${data.discovery_error}` : 'No sources found';
+            option.disabled = true;
+            select.appendChild(option);
+        } else if (data.sources) {
+            data.sources.forEach(source => {
+                const option = document.createElement('option');
+                option.value = source;
+                option.textContent = source;
+                select.appendChild(option);
+            });
+        } else {
+            // Fallback if response format is unexpected
+            const option = document.createElement('option');
+            option.value = '';
+            option.textContent = 'Invalid response format';
+            option.disabled = true;
+            select.appendChild(option);
+        }
+        
+        const sourceCount = data.sources ? data.sources.length : 0;
+        const message = forceRefresh ? 'Refreshed' : 'Loaded';
+        logActivity(`${message} ${sourceCount} NDI sources`, 'success');
+        
+        if (data.discovery_error) {
+            logActivity(`Source discovery warning: ${data.discovery_error}`, 'warning');
+        }
+    } catch (error) {
+        console.error('Error loading sources:', error);
+        logActivity(`Error loading sources: ${error.message}`, 'error');
+        
+        // Show error in UI
+        const select = document.getElementById('sourceSelect');
+        select.innerHTML = '';
+        const option = document.createElement('option');
+        option.value = '';
+        option.textContent = `Error: ${error.message.substring(0, 50)}...`;
+        option.disabled = true;
+        select.appendChild(option);
+    }
+}
+
+async function updateDeviceStatus() {
+    const statusDiv = document.getElementById('deviceStatus');
+    if (!selectedDevice) {
+        statusDiv.innerHTML = `
+            <div class="text-center text-muted py-3">
+                <div class="mb-2">📱</div>
+                <p class="mb-0">Select a device to view status</p>
+            </div>
+        `;
+        return;
+    }
+
+    // Add loading state
+    statusDiv.innerHTML = `
+        <div class="text-center py-3">
+            <div class="spinner-border spinner-border-sm text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2 mb-0 text-muted">Loading device status...</p>
+        </div>
+    `;
+
+    try {
+        const response = await fetch(`/api/ndi/devices/${selectedDevice}`);
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        
+        const device = await response.json();
+        
+        const onlineStatus = device.online ? 
+            '<span class="badge badge-success">🟢 Online</span>' : 
+            '<span class="badge badge-danger">🔴 Offline</span>';
+            
+        const viewerStatus = device.viewer_running ? 
+            '<span class="badge badge-info">▶️ Running</span>' : 
+            '<span class="badge badge-secondary">⏹️ Stopped</span>';
+            
+        const recordingStatus = device.recording ? 
+            '<span class="badge badge-danger recording-indicator">Recording</span>' : 
+            '<span class="badge badge-light">⚪ Not Recording</span>';
+        
+        statusDiv.innerHTML = `
+            <div class="fade-in">
+                <div class="device-status-row d-flex justify-content-between">
+                    <strong>📱 Device ID:</strong>
+                    <span>${device.device_id}</span>
+                </div>
+                <div class="device-status-row d-flex justify-content-between">
+                    <strong>🔌 Status:</strong>
+                    ${onlineStatus}
+                </div>
+                <div class="device-status-row d-flex justify-content-between">
+                    <strong>🎬 Viewer:</strong>
+                    ${viewerStatus}
+                </div>
+                <div class="device-status-row d-flex justify-content-between">
+                    <strong>🎥 Recording:</strong>
+                    ${recordingStatus}
+                </div>
+                <div class="device-status-row d-flex justify-content-between">
+                    <strong>📡 Current Input:</strong>
+                    <span class="text-info">${device.current_input || 'None'}</span>
+                </div>
+                <div class="device-status-row d-flex justify-content-between">
+                    <strong>🆔 Viewer PID:</strong>
+                    <code>${device.viewer_pid || 'N/A'}</code>
+                </div>
+                <div class="device-status-row d-flex justify-content-between">
+                    <strong>🆔 Record PID:</strong>
+                    <code>${device.record_pid || 'N/A'}</code>
+                </div>
+            </div>
+        `;
+    } catch (error) {
+        console.error('Error updating device status:', error);
+        statusDiv.innerHTML = `
+            <div class="text-center text-danger py-3">
+                <div class="mb-2">❌</div>
+                <p class="mb-0">Error loading device status</p>
+                <small>${error.message}</small>
+            </div>
+        `;
+    }
+}
+
+function updateSourceInfo() {
+    const infoDiv = document.getElementById('sourceInfo');
+    if (!selectedSource) {
+        infoDiv.innerHTML = `
+            <span class="fw-semibold">💡 Tip:</span> Select a source to view details
+        `;
+        return;
+    }
+    
+    infoDiv.innerHTML = `
+        <span class="fw-semibold">✅ Selected:</span> 
+        <span class="text-info fw-bold">${selectedSource}</span>
+    `;
+}
+
+async function startViewer() {
+    if (!selectedDevice || !selectedSource) {
+        alert('Please select both a device and source first');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/ndi/start', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({device_id: selectedDevice, source: selectedSource})
+        });
+        
+        const data = await response.json();
+        if (response.ok) {
+            logActivity(`Started NDI viewer on ${selectedDevice} with source ${selectedSource}`, 'success');
+            updateDeviceStatus();
+        } else {
+            throw new Error(data.detail || 'Failed to start viewer');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        logActivity(`Error starting viewer: ${error.message}`, 'error');
+    }
+}
+
+async function stopViewer() {
+    if (!selectedDevice) {
+        alert('Please select a device first');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/ndi/stop', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({device_id: selectedDevice})
+        });
+        
+        const data = await response.json();
+        if (response.ok) {
+            logActivity(`Stopped NDI viewer on ${selectedDevice}`, 'success');
+            updateDeviceStatus();
+        } else {
+            throw new Error(data.detail || 'Failed to stop viewer');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        logActivity(`Error stopping viewer: ${error.message}`, 'error');
+    }
+}
+
+async function restartViewer() {
+    if (!selectedDevice) {
+        alert('Please select a device first');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/ndi/restart', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({device_id: selectedDevice, source: selectedSource})
+        });
+        
+        const data = await response.json();
+        if (response.ok) {
+            logActivity(`Restarted NDI viewer on ${selectedDevice}`, 'success');
+            updateDeviceStatus();
+        } else {
+            throw new Error(data.detail || 'Failed to restart viewer');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        logActivity(`Error restarting viewer: ${error.message}`, 'error');
+    }
+}
+
+async function setInput() {
+    if (!selectedDevice || !selectedSource) {
+        alert('Please select both a device and source first');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/ndi/input', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({device_id: selectedDevice, source: selectedSource})
+        });
+        
+        const data = await response.json();
+        if (response.ok) {
+            logActivity(`Set input to ${selectedSource} on ${selectedDevice}`, 'success');
+            updateDeviceStatus();
+        } else {
+            throw new Error(data.detail || 'Failed to set input');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        logActivity(`Error setting input: ${error.message}`, 'error');
+    }
+}
+
+async function startRecording() {
+    if (!selectedDevice) {
+        alert('Please select a device first');
+        return;
+    }
+
+    const outputPath = document.getElementById('outputPath').value.trim();
+    
+    try {
+        const body = {device_id: selectedDevice};
+        if (selectedSource) body.source = selectedSource;
+        if (outputPath) body.output_path = outputPath;
+        
+        const response = await fetch('/api/ndi/record/start', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(body)
+        });
+        
+        const data = await response.json();
+        if (response.ok) {
+            logActivity(`Started recording on ${selectedDevice}${outputPath ? ` to ${outputPath}` : ''}`, 'success');
+            updateRecordingStatus('Recording started', 'success');
+            updateDeviceStatus();
+        } else {
+            throw new Error(data.detail || 'Failed to start recording');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        logActivity(`Error starting recording: ${error.message}`, 'error');
+    }
+}
+
+async function stopRecording() {
+    if (!selectedDevice) {
+        alert('Please select a device first');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/ndi/record/stop', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({device_id: selectedDevice})
+        });
+        
+        const data = await response.json();
+        if (response.ok) {
+            logActivity(`Stopped recording on ${selectedDevice}`, 'success');
+            updateRecordingStatus('Recording stopped', 'info');
+            updateDeviceStatus();
+        } else {
+            throw new Error(data.detail || 'Failed to stop recording');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        logActivity(`Error stopping recording: ${error.message}`, 'error');
+    }
+}
+
+async function listProcesses() {
+    if (!selectedDevice) {
+        alert('Please select a device first');
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/ndi/processes/${selectedDevice}`);
+        const data = await response.json();
+        
+        if (response.ok) {
+            logActivity(`Listed processes on ${selectedDevice}`, 'success');
+            document.getElementById('processInfo').innerHTML = 
+                '<p class="text-info">Process list request sent. Check activity log for results.</p>';
+        } else {
+            throw new Error(data.detail || 'Failed to list processes');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        logActivity(`Error listing processes: ${error.message}`, 'error');
+    }
+}
+
+async function getStatus() {
+    if (!selectedDevice) {
+        alert('Please select a device first');
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/ndi/devices/${selectedDevice}`);
+        const data = await response.json();
+        
+        if (response.ok) {
+            logActivity(`Status retrieved for ${selectedDevice}: ${JSON.stringify(data.state)}`, 'info');
+            updateDeviceStatus();
+        } else {
+            throw new Error(data.detail || 'Failed to get status');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        logActivity(`Error getting status: ${error.message}`, 'error');
+    }
+}
+
+function startCurrent() {
+    if (!selectedDevice) {
+        alert('Please select a device first');
+        return;
+    }
+    
+    if (!selectedSource) {
+        alert('No source selected. Please select a source first.');
+        return;
+    }
+    
+    startViewer();
+}
+
+function restartCurrent() {
+    restartViewer();
+}
+
+function emergencyStop() {
+    if (!selectedDevice) {
+        alert('Please select a device first');
+        return;
+    }
+    
+    if (confirm('This will stop both viewer and recording. Continue?')) {
+        Promise.all([
+            stopViewer(),
+            stopRecording()
+        ]).then(() => {
+            logActivity(`Emergency stop executed on ${selectedDevice}`, 'warning');
+        });
+    }
+}
+
+function updateRecordingStatus(message, type) {
+    const statusDiv = document.getElementById('recordingStatus');
+    const infoSpan = document.getElementById('recordingInfo');
+    
+    statusDiv.className = `alert alert-${type === 'success' ? 'success' : type === 'error' ? 'danger' : 'info'}`;
+    infoSpan.textContent = message;
+    statusDiv.classList.remove('d-none');
+    
+    setTimeout(() => {
+        statusDiv.classList.add('d-none');
+    }, 5000);
+}
+
+function toggleAutoRefresh() {
+    autoRefresh = !autoRefresh;
+    const statusSpan = document.getElementById('autoRefreshStatus');
+    const toggleBtn = document.getElementById('autoRefreshToggle');
+    
+    if (autoRefresh) {
+        statusSpan.textContent = 'On';
+        toggleBtn.classList.remove('btn-outline-secondary');
+        toggleBtn.classList.add('btn-success');
+        
+        autoRefreshInterval = setInterval(() => {
+loadDevices();
+            if (selectedDevice) {
+                updateDeviceStatus();
+            }
+        }, 5000);
+        
+        logActivity('Auto-refresh enabled (5s interval)', 'info');
+    } else {
+        statusSpan.textContent = 'Off';
+        toggleBtn.classList.remove('btn-success');
+        toggleBtn.classList.add('btn-outline-secondary');
+        
+        if (autoRefreshInterval) {
+            clearInterval(autoRefreshInterval);
+            autoRefreshInterval = null;
+        }
+        
+        logActivity('Auto-refresh disabled', 'info');
+    }
+}
+
+function logActivity(message, type = 'info') {
+    const log = document.getElementById('activityLog');
+    const timestamp = new Date().toLocaleTimeString();
+    const colorClass = type === 'error' ? 'text-danger' : 
+                      type === 'success' ? 'text-success' : 
+                      type === 'warning' ? 'text-warning' : 'text-info';
+    
+    const logEntry = document.createElement('div');
+    logEntry.className = colorClass;
+    logEntry.innerHTML = `[${timestamp}] ${message}`;
+    
+    log.appendChild(logEntry);
+    log.scrollTop = log.scrollHeight;
+}
+
+function clearLog() {
+    document.getElementById('activityLog').innerHTML = `
+        <div class="text-muted">
+            <span class="text-info">[System]</span> Activity log cleared
+        </div>
+    `;
+}
+</script>
+{% endblock %}
 

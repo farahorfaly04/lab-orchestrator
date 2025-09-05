@@ -1,0 +1,514 @@
+{% extends "base.html" %}
+
+{% block title %}Projector Control - Lab Platform{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <h1 class="text-gradient mb-1">📽️ Projector Control</h1>
+                    <p class="text-muted mb-0">Control projectors via RS232/USB serial communication</p>
+                </div>
+                <div class="connection-status online" id="connectionStatus">
+                    Connected
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5>📽️ Device Selection</h5>
+                </div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label for="deviceSelect" class="form-label fw-semibold">Select Projector Device:</label>
+                        <select class="form-select" id="deviceSelect">
+                            <option value="">Loading devices...</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5>📊 Device Status</h5>
+                </div>
+                <div class="card-body">
+                    <div id="deviceStatus">
+                        <div class="text-center text-muted py-3">
+                            <div class="mb-2">📱</div>
+                            <p class="mb-0">Select a device to view status</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-3">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5>⚡ Power Control</h5>
+                </div>
+                <div class="card-body">
+                    <div class="btn-group d-flex" role="group">
+                        <button type="button" class="btn btn-success shadow-hover" id="powerOnBtn">
+                            <div class="d-flex flex-column align-items-center">
+                                <span class="btn-icon">🟢</span>
+                                <small>Power On</small>
+                            </div>
+                        </button>
+                        <button type="button" class="btn btn-danger shadow-hover" id="powerOffBtn">
+                            <div class="d-flex flex-column align-items-center">
+                                <span class="btn-icon">🔴</span>
+                                <small>Power Off</small>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5>📺 Input Selection</h5>
+                </div>
+                <div class="card-body">
+                    <div class="btn-group d-flex" role="group">
+                        <button type="button" class="btn btn-outline-primary shadow-hover" id="hdmi1Btn">
+                            <div class="d-flex flex-column align-items-center">
+                                <span class="btn-icon">📺</span>
+                                <small>HDMI 1</small>
+                            </div>
+                        </button>
+                        <button type="button" class="btn btn-outline-primary shadow-hover" id="hdmi2Btn">
+                            <div class="d-flex flex-column align-items-center">
+                                <span class="btn-icon">📺</span>
+                                <small>HDMI 2</small>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5>📐 Aspect Ratio</h5>
+                </div>
+                <div class="card-body">
+                    <div class="btn-group d-flex" role="group">
+                        <button type="button" class="btn btn-outline-secondary shadow-hover" id="aspect43Btn">
+                            <div class="d-flex flex-column align-items-center">
+                                <span class="btn-icon">⬜</span>
+                                <small>4:3</small>
+                            </div>
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary shadow-hover" id="aspect169Btn">
+                            <div class="d-flex flex-column align-items-center">
+                                <span class="btn-icon">📺</span>
+                                <small>16:9</small>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-3">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5>🎮 Navigation</h5>
+                </div>
+                <div class="card-body">
+                    <div class="navigation-grid mx-auto">
+                        <div></div>
+                        <button type="button" class="btn btn-outline-info shadow-hover" id="upBtn">
+                            <span style="font-size: 1.5rem;">↑</span>
+                        </button>
+                        <div></div>
+                        
+                        <button type="button" class="btn btn-outline-info shadow-hover" id="leftBtn">
+                            <span style="font-size: 1.5rem;">←</span>
+                        </button>
+                        <button type="button" class="btn btn-primary shadow-hover" id="enterBtn">
+                            <span style="font-size: 0.8rem;">ENTER</span>
+                        </button>
+                        <button type="button" class="btn btn-outline-info shadow-hover" id="rightBtn">
+                            <span style="font-size: 1.5rem;">→</span>
+                        </button>
+                        
+                        <div></div>
+                        <button type="button" class="btn btn-outline-info shadow-hover" id="downBtn">
+                            <span style="font-size: 1.5rem;">↓</span>
+                        </button>
+                        <div></div>
+                    </div>
+                    
+                    <div class="row mt-3 g-2">
+                        <div class="col-6">
+                            <button type="button" class="btn btn-outline-warning w-100 shadow-hover" id="menuBtn">
+                                📋 MENU
+                            </button>
+                        </div>
+                        <div class="col-6">
+                            <button type="button" class="btn btn-outline-warning w-100 shadow-hover" id="backBtn">
+                                ↩️ BACK
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5>🔧 Image Adjustment</h5>
+                </div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label for="adjustmentType" class="form-label fw-semibold">Adjustment Type:</label>
+                        <select class="form-select" id="adjustmentType">
+                            <option value="H-IMAGE-SHIFT">↔️ Horizontal Image Shift (-100 to 100)</option>
+                            <option value="V-IMAGE-SHIFT">↕️ Vertical Image Shift (-100 to 100)</option>
+                            <option value="H-KEYSTONE">🔷 Horizontal Keystone (-40 to 40)</option>
+                            <option value="V-KEYSTONE">🔶 Vertical Keystone (-40 to 40)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="adjustmentValue" class="form-label fw-semibold">Value:</label>
+                        <input type="number" class="form-control" id="adjustmentValue" min="-100" max="100" value="0">
+                        <div class="form-text text-muted">
+                            <small>💡 Range will adjust based on selected type</small>
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-primary w-100 shadow-hover" id="adjustBtn">
+                        ✨ Apply Adjustment
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-3">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Raw Command</h5>
+                </div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label for="rawCommand">Raw ASCII Command:</label>
+                        <input type="text" class="form-control" id="rawCommand" placeholder="e.g., ~0000 1\r">
+                    </div>
+                    <button type="button" class="btn btn-warning" id="sendRawBtn">Send Raw Command</button>
+                    <div class="mt-2">
+                        <small class="text-muted">Use with caution. Refer to projector documentation for command syntax.</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-3">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5>📝 Activity Log</h5>
+                    <button type="button" class="btn btn-sm btn-outline-light shadow-hover" id="clearLogBtn">
+                        🗑️ Clear Log
+                    </button>
+                </div>
+                <div class="card-body p-0">
+                    <div id="activityLog" class="activity-log" style="height: 200px; overflow-y: scroll; padding: 15px; margin: 0;">
+                        <div class="text-muted">
+                            <span class="text-info">[System]</span> Activity will appear here...
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+let selectedDevice = null;
+
+// Load devices on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadDevices();
+    setupEventListeners();
+    updateAdjustmentRange();
+});
+
+function loadDevices() {
+    fetch('/api/projector/devices')
+        .then(response => response.json())
+        .then(data => {
+            const select = document.getElementById('deviceSelect');
+            select.innerHTML = '<option value="">Select a device...</option>';
+            
+            Object.values(data.devices).forEach(device => {
+                const option = document.createElement('option');
+                option.value = device.device_id;
+                option.textContent = `${device.device_id} (${device.online ? 'Online' : 'Offline'})`;
+                select.appendChild(option);
+            });
+        })
+        .catch(error => {
+            console.error('Error loading devices:', error);
+            logActivity('Error loading devices: ' + error.message, 'error');
+        });
+}
+
+function setupEventListeners() {
+    // Device selection
+    document.getElementById('deviceSelect').addEventListener('change', function() {
+        selectedDevice = this.value;
+        updateDeviceStatus();
+    });
+
+    // Power controls
+    document.getElementById('powerOnBtn').addEventListener('click', () => sendPowerCommand('on'));
+    document.getElementById('powerOffBtn').addEventListener('click', () => sendPowerCommand('off'));
+
+    // Input selection
+    document.getElementById('hdmi1Btn').addEventListener('click', () => sendInputCommand('HDMI1'));
+    document.getElementById('hdmi2Btn').addEventListener('click', () => sendInputCommand('HDMI2'));
+
+    // Aspect ratio
+    document.getElementById('aspect43Btn').addEventListener('click', () => sendAspectCommand('4:3'));
+    document.getElementById('aspect169Btn').addEventListener('click', () => sendAspectCommand('16:9'));
+
+    // Navigation
+    document.getElementById('upBtn').addEventListener('click', () => sendNavigationCommand('UP'));
+    document.getElementById('leftBtn').addEventListener('click', () => sendNavigationCommand('LEFT'));
+    document.getElementById('enterBtn').addEventListener('click', () => sendNavigationCommand('ENTER'));
+    document.getElementById('rightBtn').addEventListener('click', () => sendNavigationCommand('RIGHT'));
+    document.getElementById('downBtn').addEventListener('click', () => sendNavigationCommand('DOWN'));
+    document.getElementById('menuBtn').addEventListener('click', () => sendNavigationCommand('MENU'));
+    document.getElementById('backBtn').addEventListener('click', () => sendNavigationCommand('BACK'));
+
+    // Image adjustment
+    document.getElementById('adjustmentType').addEventListener('change', updateAdjustmentRange);
+    document.getElementById('adjustBtn').addEventListener('click', sendAdjustmentCommand);
+
+    // Raw command
+    document.getElementById('sendRawBtn').addEventListener('click', sendRawCommand);
+
+    // Clear log
+    document.getElementById('clearLogBtn').addEventListener('click', clearLog);
+}
+
+function updateDeviceStatus() {
+    const statusDiv = document.getElementById('deviceStatus');
+    if (!selectedDevice) {
+        statusDiv.innerHTML = '<p class="text-muted">Select a device to view status</p>';
+        return;
+    }
+
+    fetch('/api/projector/devices')
+        .then(response => response.json())
+        .then(data => {
+            const device = data.devices[selectedDevice];
+            if (device) {
+                statusDiv.innerHTML = `
+                    <p><strong>Device ID:</strong> ${device.device_id}</p>
+                    <p><strong>Status:</strong> <span class="badge ${device.online ? 'badge-success' : 'badge-danger'}">${device.online ? 'Online' : 'Offline'}</span></p>
+                    <p><strong>Current State:</strong> ${JSON.stringify(device.current_state, null, 2)}</p>
+                `;
+            }
+        })
+        .catch(error => {
+            console.error('Error updating device status:', error);
+            statusDiv.innerHTML = '<p class="text-danger">Error loading device status</p>';
+        });
+}
+
+function updateAdjustmentRange() {
+    const adjustmentType = document.getElementById('adjustmentType').value;
+    const valueInput = document.getElementById('adjustmentValue');
+    
+    if (adjustmentType.includes('IMAGE-SHIFT')) {
+        valueInput.min = -100;
+        valueInput.max = 100;
+    } else if (adjustmentType.includes('KEYSTONE')) {
+        valueInput.min = -40;
+        valueInput.max = 40;
+    }
+}
+
+function sendPowerCommand(power) {
+    if (!selectedDevice) {
+        alert('Please select a device first');
+        return;
+    }
+
+    fetch('/api/projector/power', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({device_id: selectedDevice, power: power})
+    })
+    .then(response => response.json())
+    .then(data => {
+        logActivity(`Power ${power} command sent to ${selectedDevice}`, 'success');
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        logActivity(`Error sending power command: ${error.message}`, 'error');
+    });
+}
+
+function sendInputCommand(input) {
+    if (!selectedDevice) {
+        alert('Please select a device first');
+        return;
+    }
+
+    fetch('/api/projector/input', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({device_id: selectedDevice, input: input})
+    })
+    .then(response => response.json())
+    .then(data => {
+        logActivity(`Input set to ${input} on ${selectedDevice}`, 'success');
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        logActivity(`Error setting input: ${error.message}`, 'error');
+    });
+}
+
+function sendAspectCommand(ratio) {
+    if (!selectedDevice) {
+        alert('Please select a device first');
+        return;
+    }
+
+    fetch('/api/projector/aspect', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({device_id: selectedDevice, ratio: ratio})
+    })
+    .then(response => response.json())
+    .then(data => {
+        logActivity(`Aspect ratio set to ${ratio} on ${selectedDevice}`, 'success');
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        logActivity(`Error setting aspect ratio: ${error.message}`, 'error');
+    });
+}
+
+function sendNavigationCommand(direction) {
+    if (!selectedDevice) {
+        alert('Please select a device first');
+        return;
+    }
+
+    fetch('/api/projector/navigate', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({device_id: selectedDevice, direction: direction})
+    })
+    .then(response => response.json())
+    .then(data => {
+        logActivity(`Navigation ${direction} sent to ${selectedDevice}`, 'success');
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        logActivity(`Error sending navigation command: ${error.message}`, 'error');
+    });
+}
+
+function sendAdjustmentCommand() {
+    if (!selectedDevice) {
+        alert('Please select a device first');
+        return;
+    }
+
+    const adjustment = document.getElementById('adjustmentType').value;
+    const value = parseInt(document.getElementById('adjustmentValue').value);
+
+    fetch('/api/projector/adjust', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({device_id: selectedDevice, adjustment: adjustment, value: value})
+    })
+    .then(response => response.json())
+    .then(data => {
+        logActivity(`${adjustment} adjusted to ${value} on ${selectedDevice}`, 'success');
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        logActivity(`Error adjusting image: ${error.message}`, 'error');
+    });
+}
+
+function sendRawCommand() {
+    if (!selectedDevice) {
+        alert('Please select a device first');
+        return;
+    }
+
+    const command = document.getElementById('rawCommand').value;
+    if (!command.trim()) {
+        alert('Please enter a command');
+        return;
+    }
+
+    fetch('/api/projector/raw', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({device_id: selectedDevice, command: command})
+    })
+    .then(response => response.json())
+    .then(data => {
+        logActivity(`Raw command sent to ${selectedDevice}: ${command}`, 'success');
+        document.getElementById('rawCommand').value = '';
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        logActivity(`Error sending raw command: ${error.message}`, 'error');
+    });
+}
+
+function logActivity(message, type = 'info') {
+    const log = document.getElementById('activityLog');
+    const timestamp = new Date().toLocaleTimeString();
+    const colorClass = type === 'error' ? 'text-danger' : type === 'success' ? 'text-success' : 'text-info';
+    
+    const logEntry = document.createElement('div');
+    logEntry.className = colorClass;
+    logEntry.innerHTML = `[${timestamp}] ${message}`;
+    
+    log.appendChild(logEntry);
+    log.scrollTop = log.scrollHeight;
+}
+
+function clearLog() {
+    document.getElementById('activityLog').innerHTML = `
+        <div class="text-muted">
+            <span class="text-info">[System]</span> Activity log cleared
+        </div>
+    `;
+}
+</script>
+{% endblock %}

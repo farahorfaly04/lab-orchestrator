@@ -1,0 +1,486 @@
+{% extends "base.html" %}
+
+{% block title %}{{ plugin_config.title }} - Lab Platform{% endblock %}
+
+{% block content %}
+<!-- Plugin Header -->
+<div class="page-header">
+    <div class="d-flex align-items-center justify-content-between">
+        <div>
+            <h1 class="page-title">{{ plugin_config.icon }} {{ plugin_config.title }}</h1>
+            <p class="page-subtitle">{{ plugin_config.description }}</p>
+        </div>
+        <div class="connection-status online" id="connectionStatus">
+            Connected
+        </div>
+    </div>
+</div>
+
+<!-- Plugin Summary Cards -->
+<div class="summary-cards">
+    <div class="summary-card">
+        <div class="summary-card-value" id="deviceCount">-</div>
+        <div class="summary-card-label">Connected Devices</div>
+    </div>
+    <div class="summary-card">
+        <div class="summary-card-value" id="onlineCount">-</div>
+        <div class="summary-card-label">Online</div>
+    </div>
+    <div class="summary-card">
+        <div class="summary-card-value" id="activeCount">-</div>
+        <div class="summary-card-label">{{ plugin_config.active_label or "Active" }}</div>
+    </div>
+    <div class="summary-card">
+        <div class="summary-card-value" id="statusIndicator">🟢</div>
+        <div class="summary-card-label">Plugin Status</div>
+    </div>
+</div>
+
+<!-- Main Plugin Content -->
+<div class="container-fluid">
+    <div class="row">
+        <!-- Device Selection Panel -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5>📱 Device Selection</h5>
+                </div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label for="deviceSelect" class="form-label fw-semibold">Select {{ plugin_config.device_type or "Device" }}:</label>
+                        <select class="form-select" id="deviceSelect">
+                            <option value="">Loading devices...</option>
+                        </select>
+                    </div>
+                    <button type="button" class="btn btn-outline-primary btn-sm shadow-hover" id="refreshDevicesBtn">
+                        🔄 Refresh Devices
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Device Status Panel -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5>📊 Device Status</h5>
+                </div>
+                <div class="card-body">
+                    <div id="deviceStatus">
+                        <div class="text-center text-muted py-3">
+                            <div class="mb-2">📱</div>
+                            <p class="mb-0">Select a device to view status</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Plugin-Specific Content -->
+    {% block plugin_controls %}
+    <!-- This block will be overridden by individual plugin templates -->
+    <div class="row mt-3">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5>⚙️ Plugin Controls</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">Plugin-specific controls will appear here.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endblock %}
+
+    <!-- Activity Log (Standard for all plugins) -->
+    <div class="row mt-3">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5>📝 Activity Log</h5>
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-sm btn-outline-light shadow-hover" id="autoRefreshToggle">
+                            🔄 Auto-refresh: <span id="autoRefreshStatus">Off</span>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-light shadow-hover" id="clearLogBtn">
+                            🗑️ Clear
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div id="activityLog" class="activity-log" style="height: 280px; overflow-y: scroll; padding: 15px; margin: 0;">
+                        <div class="text-muted">
+                            <span class="text-info">[System]</span> {{ plugin_config.title }} interface loaded...
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions (Standard for all plugins) -->
+    {% block quick_actions %}
+    <div class="row mt-3">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5>⚡ Quick Actions</h5>
+                </div>
+                <div class="card-body quick-actions">
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <button type="button" class="btn btn-outline-primary w-100 shadow-hover" id="statusBtn">
+                                <span class="btn-icon">ℹ️</span>
+                                Get Status
+                            </button>
+                        </div>
+                        <div class="col-md-3">
+                            <button type="button" class="btn btn-outline-success w-100 shadow-hover" id="startBtn">
+                                <span class="btn-icon">▶️</span>
+                                Start
+                            </button>
+                        </div>
+                        <div class="col-md-3">
+                            <button type="button" class="btn btn-outline-warning w-100 shadow-hover" id="restartBtn">
+                                <span class="btn-icon">🔄</span>
+                                Restart
+                            </button>
+                        </div>
+                        <div class="col-md-3">
+                            <button type="button" class="btn btn-outline-danger w-100 shadow-hover" id="stopBtn">
+                                <span class="btn-icon">⏹️</span>
+                                Stop
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endblock %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Standard Plugin JavaScript Framework
+class StandardPlugin {
+    constructor(config) {
+        this.config = config;
+        this.selectedDevice = null;
+        this.autoRefresh = false;
+        this.autoRefreshInterval = null;
+        
+        // Initialize plugin
+        this.init();
+    }
+    
+    init() {
+        document.addEventListener('DOMContentLoaded', () => {
+            this.loadDevices();
+            this.setupStandardEventListeners();
+            this.setupPluginEventListeners();
+            this.logActivity(`${this.config.title} interface loaded`, 'info');
+        });
+    }
+    
+    setupStandardEventListeners() {
+        // Device selection
+        document.getElementById('deviceSelect').addEventListener('change', (e) => {
+            this.selectedDevice = e.target.value;
+            this.updateDeviceStatus();
+            this.logActivity(`Selected device: ${this.selectedDevice}`, 'info');
+        });
+
+        // Standard buttons
+        document.getElementById('refreshDevicesBtn').addEventListener('click', () => this.loadDevices());
+        document.getElementById('statusBtn').addEventListener('click', () => this.getStatus());
+        document.getElementById('startBtn').addEventListener('click', () => this.startDevice());
+        document.getElementById('restartBtn').addEventListener('click', () => this.restartDevice());
+        document.getElementById('stopBtn').addEventListener('click', () => this.stopDevice());
+        
+        // Utility buttons
+        document.getElementById('autoRefreshToggle').addEventListener('click', () => this.toggleAutoRefresh());
+        document.getElementById('clearLogBtn').addEventListener('click', () => this.clearLog());
+    }
+    
+    // Override this in individual plugins
+    setupPluginEventListeners() {
+        // Plugin-specific event listeners go here
+    }
+    
+    async loadDevices() {
+        try {
+            const response = await fetch(`/api/${this.config.api_endpoint}/devices`);
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`HTTP ${response.status}: ${errorText.substring(0, 100)}...`);
+            }
+            
+            const data = await response.json();
+            this.renderDeviceSelect(data);
+            this.updateSummaryCards(data);
+            
+        } catch (error) {
+            console.error('Error loading devices:', error);
+            this.logActivity(`Error loading devices: ${error.message}`, 'error');
+            this.showDeviceSelectError(error);
+        }
+    }
+    
+    renderDeviceSelect(data) {
+        const select = document.getElementById('deviceSelect');
+        select.innerHTML = '<option value="">Select a device...</option>';
+        
+        if (data.devices && Object.keys(data.devices).length > 0) {
+            Object.values(data.devices).forEach(device => {
+                const option = document.createElement('option');
+                option.value = device.device_id;
+                const status = device.online ? 'Online' : 'Offline';
+                const extraInfo = this.getDeviceExtraInfo(device);
+                option.textContent = `${device.device_id} - ${status}${extraInfo}`;
+                select.appendChild(option);
+            });
+            this.logActivity(`Loaded ${Object.keys(data.devices).length} devices`, 'success');
+        } else {
+            const option = document.createElement('option');
+            option.value = '';
+            option.textContent = 'No devices found';
+            option.disabled = true;
+            select.appendChild(option);
+            this.logActivity('No devices found', 'warning');
+        }
+    }
+    
+    // Override this to add plugin-specific device info
+    getDeviceExtraInfo(device) {
+        return '';
+    }
+    
+    updateSummaryCards(data) {
+        const devices = data.devices || {};
+        const deviceCount = Object.keys(devices).length;
+        const onlineCount = Object.values(devices).filter(d => 
+            d.online === true || (d.status && d.status.online === true)
+        ).length;
+        const activeCount = this.getActiveDeviceCount(devices);
+        
+        document.getElementById('deviceCount').textContent = deviceCount;
+        document.getElementById('onlineCount').textContent = onlineCount;
+        document.getElementById('activeCount').textContent = activeCount;
+        
+        // Update status indicator
+        const statusEl = document.getElementById('statusIndicator');
+        if (deviceCount === 0) {
+            statusEl.textContent = '⚪';
+        } else if (onlineCount === deviceCount) {
+            statusEl.textContent = '🟢';
+        } else if (onlineCount > 0) {
+            statusEl.textContent = '🟡';
+        } else {
+            statusEl.textContent = '🔴';
+        }
+    }
+    
+    // Override this to define what "active" means for your plugin
+    getActiveDeviceCount(devices) {
+        return Object.values(devices).filter(d => d.online).length;
+    }
+    
+    showDeviceSelectError(error) {
+        const select = document.getElementById('deviceSelect');
+        select.innerHTML = '<option value="">Select a device...</option>';
+        const option = document.createElement('option');
+        option.value = '';
+        option.textContent = `Error: ${error.message.substring(0, 50)}...`;
+        option.disabled = true;
+        select.appendChild(option);
+    }
+    
+    async updateDeviceStatus() {
+        const statusDiv = document.getElementById('deviceStatus');
+        if (!this.selectedDevice) {
+            statusDiv.innerHTML = `
+                <div class="text-center text-muted py-3">
+                    <div class="mb-2">📱</div>
+                    <p class="mb-0">Select a device to view status</p>
+                </div>
+            `;
+            return;
+        }
+
+        statusDiv.innerHTML = `
+            <div class="text-center py-3">
+                <div class="spinner-border spinner-border-sm text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2 mb-0 text-muted">Loading device status...</p>
+            </div>
+        `;
+
+        try {
+            const response = await fetch(`/api/${this.config.api_endpoint}/devices/${this.selectedDevice}`);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            
+            const device = await response.json();
+            this.renderDeviceStatus(device);
+            
+        } catch (error) {
+            console.error('Error updating device status:', error);
+            statusDiv.innerHTML = `
+                <div class="text-center text-danger py-3">
+                    <div class="mb-2">❌</div>
+                    <p class="mb-0">Error loading device status</p>
+                    <small>${error.message}</small>
+                </div>
+            `;
+        }
+    }
+    
+    // Override this to customize device status display
+    renderDeviceStatus(device) {
+        const statusDiv = document.getElementById('deviceStatus');
+        const onlineStatus = device.online ? 
+            '<span class="badge badge-success">🟢 Online</span>' : 
+            '<span class="badge badge-danger">🔴 Offline</span>';
+        
+        statusDiv.innerHTML = `
+            <div class="fade-in">
+                <div class="device-status-row d-flex justify-content-between">
+                    <strong>📱 Device ID:</strong>
+                    <span>${device.device_id}</span>
+                </div>
+                <div class="device-status-row d-flex justify-content-between">
+                    <strong>🔌 Status:</strong>
+                    ${onlineStatus}
+                </div>
+                ${this.getAdditionalStatusRows(device)}
+            </div>
+        `;
+    }
+    
+    // Override this to add plugin-specific status rows
+    getAdditionalStatusRows(device) {
+        return '';
+    }
+    
+    // Standard API methods - override these in individual plugins
+    async getStatus() {
+        if (!this.selectedDevice) {
+            alert('Please select a device first');
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/api/${this.config.api_endpoint}/devices/${this.selectedDevice}`);
+            const data = await response.json();
+            
+            if (response.ok) {
+                this.logActivity(`Status retrieved for ${this.selectedDevice}`, 'info');
+                this.updateDeviceStatus();
+            } else {
+                throw new Error(data.detail || 'Failed to get status');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            this.logActivity(`Error getting status: ${error.message}`, 'error');
+        }
+    }
+    
+    async startDevice() {
+        if (!this.selectedDevice) {
+            alert('Please select a device first');
+            return;
+        }
+        
+        // Override this method in individual plugins
+        this.logActivity(`Start command not implemented for ${this.config.title}`, 'warning');
+    }
+    
+    async restartDevice() {
+        if (!this.selectedDevice) {
+            alert('Please select a device first');
+            return;
+        }
+        
+        // Override this method in individual plugins
+        this.logActivity(`Restart command not implemented for ${this.config.title}`, 'warning');
+    }
+    
+    async stopDevice() {
+        if (!this.selectedDevice) {
+            alert('Please select a device first');
+            return;
+        }
+        
+        // Override this method in individual plugins
+        this.logActivity(`Stop command not implemented for ${this.config.title}`, 'warning');
+    }
+    
+    toggleAutoRefresh() {
+        this.autoRefresh = !this.autoRefresh;
+        const statusSpan = document.getElementById('autoRefreshStatus');
+        const toggleBtn = document.getElementById('autoRefreshToggle');
+        
+        if (this.autoRefresh) {
+            statusSpan.textContent = 'On';
+            toggleBtn.classList.remove('btn-outline-light');
+            toggleBtn.classList.add('btn-success');
+            
+            this.autoRefreshInterval = setInterval(() => {
+                this.loadDevices();
+                if (this.selectedDevice) {
+                    this.updateDeviceStatus();
+                }
+            }, 5000);
+            
+            this.logActivity('Auto-refresh enabled (5s interval)', 'info');
+        } else {
+            statusSpan.textContent = 'Off';
+            toggleBtn.classList.remove('btn-success');
+            toggleBtn.classList.add('btn-outline-light');
+            
+            if (this.autoRefreshInterval) {
+                clearInterval(this.autoRefreshInterval);
+                this.autoRefreshInterval = null;
+            }
+            
+            this.logActivity('Auto-refresh disabled', 'info');
+        }
+    }
+    
+    logActivity(message, type = 'info') {
+        const log = document.getElementById('activityLog');
+        const timestamp = new Date().toLocaleTimeString();
+        const colorClass = type === 'error' ? 'text-danger' : 
+                          type === 'success' ? 'text-success' : 
+                          type === 'warning' ? 'text-warning' : 'text-info';
+        
+        const logEntry = document.createElement('div');
+        logEntry.className = colorClass;
+        logEntry.innerHTML = `[${timestamp}] ${message}`;
+        
+        log.appendChild(logEntry);
+        log.scrollTop = log.scrollHeight;
+    }
+    
+    clearLog() {
+        document.getElementById('activityLog').innerHTML = `
+            <div class="text-muted">
+                <span class="text-info">[System]</span> Activity log cleared
+            </div>
+        `;
+    }
+}
+
+// Plugin-specific initialization will be added by individual templates
+{% block plugin_scripts %}
+// Plugin-specific JavaScript goes here
+{% endblock %}
+</script>
+{% endblock %}

@@ -1,21 +1,70 @@
-<!doctype html>
-<html>
-  <head>
+<!DOCTYPE html>
+<html lang="en">
+<head>
     <meta charset="utf-8">
-    <title>{{ title or "Orchestrator" }}</title>
-  </head>
-  <body>
-    <nav>
-      <a href="/">Home</a>
-      <a href="/ui/devices">Devices</a>
-      {% for p in plugins or [] %}
-      <a href="/ui/{{ p }}">{{ p | upper }}</a>
-      {% endfor %}
-    </nav>
-    <main>
-      {% block content %}{% endblock %}
-    </main>
-  </body>
-  </html>
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="description" content="Lab Platform - Device orchestration and control system">
+    <title>{% block title %}{{ title or "Lab Platform" }}{% endblock %}</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/custom.css">
+    
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <div class="main-container">
+        <!-- Navigation -->
+        <nav class="main-nav">
+            <div class="nav-container">
+                <a href="/" class="nav-brand">
+                    <span class="nav-brand-icon">🔬</span>
+                    <span>Lab Platform</span>
+                </a>
+                
+                <ul class="nav-links">
+                    <li>
+                        <a href="/" class="nav-link {% if request.endpoint == 'index' %}active{% endif %}">
+                            <span>🏠</span>
+                            <span>Dashboard</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/ui/devices" class="nav-link {% if request.endpoint == 'devices' %}active{% endif %}">
+                            <span>📱</span>
+                            <span>Devices</span>
+                        </a>
+                    </li>
+                    {% for p in plugins or [] %}
+                    <li>
+                        <a href="/ui/{{ p }}" class="nav-link {% if request.endpoint == p %}active{% endif %}">
+                            <span>{% if p == 'ndi' %}🎥{% elif p == 'projector' %}📽️{% else %}⚙️{% endif %}</span>
+                            <span>{{ p.title() }}</span>
+                        </a>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </nav>
+        
+        <!-- Main Content -->
+        <main class="content-wrapper">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+    
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    
+    {% block scripts %}{% endblock %}
+</body>
+</html>
 
 

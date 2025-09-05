@@ -1,7 +1,120 @@
-{% extends "base.html" %}
-{% block content %}
-<h1>{{ module | upper }} Control</h1>
-<div id="panel">Simple panel placeholder</div>
+{% extends "plugin_base.html" %}
+
+{% set plugin_config = {
+    'title': (module | title) + ' Control',
+    'icon': '⚙️',
+    'description': 'Control and manage ' + (module | title) + ' devices',
+    'device_type': (module | title) + ' Device',
+    'api_endpoint': module,
+    'active_label': 'Active'
+} %}
+
+{% block plugin_controls %}
+<!-- Generic Plugin Control Panel -->
+<div class="row mt-3">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5>⚙️ {{ module | title }} Controls</h5>
+            </div>
+            <div class="card-body">
+                <div id="panel" class="text-center py-4">
+                    <div class="mb-3">
+                        <div style="font-size: 3rem; margin-bottom: 1rem;">🔧</div>
+                        <h4>Plugin Controls</h4>
+                        <p class="text-muted">
+                            This is a generic plugin interface for {{ module | title }}.
+                            <br>
+                            Custom controls and functionality can be implemented here.
+                        </p>
+                    </div>
+                    
+                    <div class="row g-3 justify-content-center">
+                        <div class="col-md-4">
+                            <div class="card border-primary">
+                                <div class="card-body text-center">
+                                    <div class="mb-2">📋</div>
+                                    <h6>Configuration</h6>
+                                    <p class="small text-muted">Setup and configure {{ module | title }} settings</p>
+                                    <button class="btn btn-outline-primary btn-sm" onclick="alert('Configuration interface not implemented')">
+                                        Configure
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card border-success">
+                                <div class="card-body text-center">
+                                    <div class="mb-2">🎛️</div>
+                                    <h6>Operations</h6>
+                                    <p class="small text-muted">Perform {{ module | title }} operations</p>
+                                    <button class="btn btn-outline-success btn-sm" onclick="alert('Operations interface not implemented')">
+                                        Operate
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card border-info">
+                                <div class="card-body text-center">
+                                    <div class="mb-2">📊</div>
+                                    <h6>Monitoring</h6>
+                                    <p class="small text-muted">Monitor {{ module | title }} status and metrics</p>
+                                    <button class="btn btn-outline-info btn-sm" onclick="alert('Monitoring interface not implemented')">
+                                        Monitor
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4 p-3 bg-light rounded">
+                        <small class="text-muted">
+                            <strong>💡 Developer Note:</strong> 
+                            To customize this interface, create a specific template for the {{ module }} plugin 
+                            that extends the <code>plugin_base.html</code> template and implements the 
+                            <code>plugin_controls</code> block with your custom functionality.
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block plugin_scripts %}
+// Generic Plugin Implementation
+class GenericPlugin extends StandardPlugin {
+    constructor() {
+        super({
+            title: '{{ module | title }} Control',
+            api_endpoint: '{{ module }}'
+        });
+    }
+    
+    setupPluginEventListeners() {
+        // Add plugin-specific event listeners here
+        this.logActivity(`{{ module | title }} plugin interface loaded`, 'info');
+        this.logActivity('This is a generic plugin template. Implement custom functionality as needed.', 'warning');
+    }
+    
+    // Override methods as needed for the specific plugin
+    async startDevice() {
+        this.logActivity(`Start command for {{ module }} plugin not implemented`, 'warning');
+    }
+    
+    async restartDevice() {
+        this.logActivity(`Restart command for {{ module }} plugin not implemented`, 'warning');
+    }
+    
+    async stopDevice() {
+        this.logActivity(`Stop command for {{ module }} plugin not implemented`, 'warning');
+    }
+}
+
+// Initialize the generic plugin
+const genericPlugin = new GenericPlugin();
 {% endblock %}
 
 

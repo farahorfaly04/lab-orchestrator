@@ -1,92 +1,314 @@
 {% extends "base.html" %}
+
+{% block title %}Devices - Lab Platform{% endblock %}
+
 {% block content %}
-<h1>Devices</h1>
+<!-- Page Header -->
+<div class="page-header">
+    <h1 class="page-title">📱 Device Management</h1>
+    <p class="page-subtitle">Monitor and manage all connected laboratory devices</p>
+</div>
 
-<div id="summary"></div>
+<!-- Summary Cards -->
+<div class="summary-cards">
+    <div class="summary-card">
+        <div class="summary-card-value" id="totalDevices">-</div>
+        <div class="summary-card-label">Total Devices</div>
+    </div>
+    <div class="summary-card">
+        <div class="summary-card-value" id="onlineDevices">-</div>
+        <div class="summary-card-label">Online</div>
+    </div>
+    <div class="summary-card">
+        <div class="summary-card-value" id="offlineDevices">-</div>
+        <div class="summary-card-label">Offline</div>
+    </div>
+    <div class="summary-card">
+        <div class="summary-card-value" id="lastUpdate">-</div>
+        <div class="summary-card-label">Last Update</div>
+    </div>
+</div>
 
-<table id="devicesTable" border="1" cellpadding="6" cellspacing="0">
-  <thead>
-    <tr>
-      <th>Device ID</th>
-      <th>Online</th>
-      <th>Labels</th>
-      <th>Modules</th>
-      <th>Updated</th>
-      <th>Actions</th>
-    </tr>
-  </thead>
-  <tbody></tbody>
-  </table>
+<!-- Devices Table -->
+<div class="modern-table">
+    <table id="devicesTable">
+        <thead>
+            <tr>
+                <th>Device ID</th>
+                <th>Status</th>
+                <th>Labels</th>
+                <th>Modules</th>
+                <th>Last Updated</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td colspan="6" style="text-align: center; padding: 2rem;">
+                    <div class="spinner-border spinner-border-sm text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2 mb-0 text-muted">Loading devices...</p>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
 
-<h3 style="margin-top: 16px;">Locks</h3>
-<table id="locksTable" border="1" cellpadding="6" cellspacing="0">
-  <thead>
-    <tr>
-      <th>Key</th>
-      <th>Holder</th>
-      <th>Expires (epoch)</th>
-    </tr>
-  </thead>
-  <tbody></tbody>
-  </table>
+<!-- System Locks -->
+<div class="modern-table">
+    <div style="display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.25rem; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border-bottom: 2px solid #e2e8f0;">
+        <h3 style="margin: 0; font-size: 1.1rem; font-weight: 600; color: var(--dark-color);">🔒 System Locks</h3>
+        <button class="btn btn-sm btn-outline-primary" onclick="loadRegistry()" style="border-radius: var(--border-radius-sm);">
+            🔄 Refresh
+        </button>
+    </div>
+    <table id="locksTable">
+        <thead>
+            <tr>
+                <th>Lock Key</th>
+                <th>Holder</th>
+                <th>Expires</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td colspan="3" style="text-align: center; padding: 1rem;">
+                    <span class="text-muted">No active locks</span>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+{% endblock %}
 
+{% block scripts %}
 <script>
+let refreshInterval;
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadRegistry();
+    // Auto-refresh every 5 seconds
+    refreshInterval = setInterval(loadRegistry, 5000);
+});
+
 async function loadRegistry() {
-  try {
-    const r = await fetch('/api/registry');
-    const reg = await r.json();
-    render(reg);
-  } catch (e) {
-    console.error(e);
-  }
+    try {
+        const response = await fetch('/api/registry');
+        if (!response.ok) throw new Error('Failed to fetch registry');
+        
+        const reg = await response.json();
+        render(reg);
+    } catch (error) {
+        console.error('Error loading registry:', error);
+        showError('Failed to load device registry');
+    }
 }
 
-function esc(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function esc(s) { 
+    return String(s == null ? '' : s)
+        .replace(/&/g,'&amp;')
+        .replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;'); 
+}
+
+function formatTimestamp(ts) {
+    if (!ts) return 'Never';
+    try {
+        const date = new Date(ts * 1000); // Assuming epoch timestamp
+        return date.toLocaleString();
+    } catch (e) {
+        return ts;
+    }
+}
+
+function formatExpiry(exp) {
+    if (!exp) return 'Never';
+    try {
+        const date = new Date(exp * 1000);
+        const now = new Date();
+        const diffMs = date - now;
+        
+        if (diffMs < 0) return 'Expired';
+        
+        const diffMins = Math.floor(diffMs / 60000);
+        if (diffMins < 60) return `${diffMins}m`;
+        
+        const diffHours = Math.floor(diffMins / 60);
+        if (diffHours < 24) return `${diffHours}h`;
+        
+        const diffDays = Math.floor(diffHours / 24);
+        return `${diffDays}d`;
+    } catch (e) {
+        return exp;
+    }
+}
 
 function render(reg) {
-  const devices = reg.devices || {};
-  const locks = reg.locks || {};
-  const tbody = document.querySelector('#devicesTable tbody');
-  tbody.innerHTML = '';
-  Object.entries(devices).forEach(([id, d]) => {
-    const tr = document.createElement('tr');
-    const online = d.online === true || (d.status && d.status.online === true);
-    const labels = (d.labels || []).join(', ');
-    const modules = Array.isArray(d.modules) ? d.modules.join(', ') : '';
-    const updated = d.ts || (d.status && d.status.ts) || '';
-    tr.innerHTML = `<td>${esc(id)}</td><td>${online ? 'yes' : 'no'}</td><td>${esc(labels)}</td><td>${esc(modules)}</td><td>${esc(updated)}</td>`;
-    const tdActions = document.createElement('td');
-    const btn = document.createElement('button');
-    btn.textContent = 'Remove';
-    btn.onclick = async () => {
-      if (!confirm(`Remove device ${id}? This clears retained meta/status.`)) return;
-      try {
-        const r = await fetch(`/api/registry/devices/${encodeURIComponent(id)}`, { method: 'DELETE' });
-        if (!r.ok) { const e = await r.text(); alert('Failed: ' + e); return; }
-        loadRegistry();
-      } catch (e) { console.error(e); alert('Error removing device'); }
-    };
-    tdActions.appendChild(btn);
-    tr.appendChild(tdActions);
-    tbody.appendChild(tr);
-  });
-
-  const ltbody = document.querySelector('#locksTable tbody');
-  ltbody.innerHTML = '';
-  Object.entries(locks).forEach(([key, v]) => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${esc(key)}</td><td>${esc(v.holder)}</td><td>${esc(v.exp)}</td>`;
-    ltbody.appendChild(tr);
-  });
-
-  const summary = document.getElementById('summary');
-  const count = Object.keys(devices).length;
-  const onlineCount = Object.values(devices).filter(d => d.online === true || (d.status && d.status.online === true)).length;
-  summary.textContent = `${onlineCount}/${count} online • updated ${esc(reg.ts || '')}`;
+    const devices = reg.devices || {};
+    const locks = reg.locks || {};
+    
+    // Update summary cards
+    const deviceCount = Object.keys(devices).length;
+    const onlineCount = Object.values(devices).filter(d => 
+        d.online === true || (d.status && d.status.online === true)
+    ).length;
+    const offlineCount = deviceCount - onlineCount;
+    
+    document.getElementById('totalDevices').textContent = deviceCount;
+    document.getElementById('onlineDevices').textContent = onlineCount;
+    document.getElementById('offlineDevices').textContent = offlineCount;
+    document.getElementById('lastUpdate').textContent = reg.ts ? 
+        new Date(reg.ts * 1000).toLocaleTimeString() : 'Never';
+    
+    // Render devices table
+    const tbody = document.querySelector('#devicesTable tbody');
+    tbody.innerHTML = '';
+    
+    if (deviceCount === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" style="text-align: center; padding: 2rem;">
+                    <div style="color: var(--secondary-color);">
+                        <div style="font-size: 2rem; margin-bottom: 0.5rem;">📱</div>
+                        <p class="mb-0">No devices registered</p>
+                        <small>Devices will appear here when they connect to the system</small>
+                    </div>
+                </td>
+            </tr>
+        `;
+    } else {
+        Object.entries(devices).forEach(([id, d]) => {
+            const tr = document.createElement('tr');
+            const online = d.online === true || (d.status && d.status.online === true);
+            const labels = (d.labels || []).join(', ') || 'None';
+            const modules = Array.isArray(d.modules) ? d.modules.join(', ') : 'None';
+            const updated = formatTimestamp(d.ts || (d.status && d.status.ts));
+            
+            tr.innerHTML = `
+                <td>
+                    <strong>${esc(id)}</strong>
+                </td>
+                <td>
+                    <span class="${online ? 'status-online' : 'status-offline'}">
+                        ${online ? 'Online' : 'Offline'}
+                    </span>
+                </td>
+                <td>${esc(labels)}</td>
+                <td>${esc(modules)}</td>
+                <td>
+                    <small class="text-muted">${updated}</small>
+                </td>
+                <td>
+                    <div class="table-actions">
+                        <button class="btn-table-action btn-table-remove" onclick="removeDevice('${esc(id)}')">
+                            🗑️ Remove
+                        </button>
+                    </div>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+    
+    // Render locks table
+    const ltbody = document.querySelector('#locksTable tbody');
+    ltbody.innerHTML = '';
+    
+    const lockEntries = Object.entries(locks);
+    if (lockEntries.length === 0) {
+        ltbody.innerHTML = `
+            <tr>
+                <td colspan="3" style="text-align: center; padding: 1rem;">
+                    <span class="text-muted">No active locks</span>
+                </td>
+            </tr>
+        `;
+    } else {
+        lockEntries.forEach(([key, v]) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><code>${esc(key)}</code></td>
+                <td>${esc(v.holder || 'Unknown')}</td>
+                <td>
+                    <span class="badge badge-info">${formatExpiry(v.exp)}</span>
+                </td>
+            `;
+            ltbody.appendChild(tr);
+        });
+    }
 }
 
-loadRegistry();
-setInterval(loadRegistry, 3000);
+async function removeDevice(deviceId) {
+    if (!confirm(`Remove device "${deviceId}"?\n\nThis will clear all retained metadata and status information for this device.`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/registry/devices/${encodeURIComponent(deviceId)}`, { 
+            method: 'DELETE' 
+        });
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+        
+        // Show success message
+        showSuccess(`Device "${deviceId}" removed successfully`);
+        
+        // Reload registry
+        loadRegistry();
+    } catch (error) {
+        console.error('Error removing device:', error);
+        showError(`Failed to remove device: ${error.message}`);
+    }
+}
+
+function showSuccess(message) {
+    // Simple success notification - could be enhanced with a toast library
+    const alert = document.createElement('div');
+    alert.className = 'alert alert-success alert-dismissible fade show';
+    alert.style.position = 'fixed';
+    alert.style.top = '20px';
+    alert.style.right = '20px';
+    alert.style.zIndex = '9999';
+    alert.innerHTML = `
+        <strong>✅ Success!</strong> ${message}
+        <button type="button" class="btn-close" onclick="this.parentElement.remove()"></button>
+    `;
+    document.body.appendChild(alert);
+    
+    setTimeout(() => {
+        if (alert.parentElement) alert.remove();
+    }, 5000);
+}
+
+function showError(message) {
+    // Simple error notification
+    const alert = document.createElement('div');
+    alert.className = 'alert alert-danger alert-dismissible fade show';
+    alert.style.position = 'fixed';
+    alert.style.top = '20px';
+    alert.style.right = '20px';
+    alert.style.zIndex = '9999';
+    alert.innerHTML = `
+        <strong>❌ Error!</strong> ${message}
+        <button type="button" class="btn-close" onclick="this.parentElement.remove()"></button>
+    `;
+    document.body.appendChild(alert);
+    
+    setTimeout(() => {
+        if (alert.parentElement) alert.remove();
+    }, 8000);
+}
+
+// Cleanup interval on page unload
+window.addEventListener('beforeunload', function() {
+    if (refreshInterval) {
+        clearInterval(refreshInterval);
+    }
+});
 </script>
 {% endblock %}
 

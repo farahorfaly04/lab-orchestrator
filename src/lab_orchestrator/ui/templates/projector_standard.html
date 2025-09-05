@@ -1,0 +1,445 @@
+{% extends "plugin_base.html" %}
+
+{% set plugin_config = {
+    'title': 'Projector Control',
+    'icon': '📽️',
+    'description': 'Control projectors via RS232/USB serial communication',
+    'device_type': 'Projector Device',
+    'api_endpoint': 'projector',
+    'active_label': 'Active'
+} %}
+
+{% block plugin_controls %}
+<!-- Power Control Panel -->
+<div class="row mt-3">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5>⚡ Power Control</h5>
+            </div>
+            <div class="card-body">
+                <div class="btn-group d-flex" role="group">
+                    <button type="button" class="btn btn-success shadow-hover" id="powerOnBtn">
+                        <div class="d-flex flex-column align-items-center">
+                            <span class="btn-icon">🟢</span>
+                            <small>Power On</small>
+                        </div>
+                    </button>
+                    <button type="button" class="btn btn-danger shadow-hover" id="powerOffBtn">
+                        <div class="d-flex flex-column align-items-center">
+                            <span class="btn-icon">🔴</span>
+                            <small>Power Off</small>
+                        </div>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Input Selection Panel -->
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5>📺 Input Selection</h5>
+            </div>
+            <div class="card-body">
+                <div class="btn-group d-flex" role="group">
+                    <button type="button" class="btn btn-outline-primary shadow-hover" id="hdmi1Btn">
+                        <div class="d-flex flex-column align-items-center">
+                            <span class="btn-icon">📺</span>
+                            <small>HDMI 1</small>
+                        </div>
+                    </button>
+                    <button type="button" class="btn btn-outline-primary shadow-hover" id="hdmi2Btn">
+                        <div class="d-flex flex-column align-items-center">
+                            <span class="btn-icon">📺</span>
+                            <small>HDMI 2</small>
+                        </div>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Aspect Ratio Panel -->
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5>📐 Aspect Ratio</h5>
+            </div>
+            <div class="card-body">
+                <div class="btn-group d-flex" role="group">
+                    <button type="button" class="btn btn-outline-secondary shadow-hover" id="aspect43Btn">
+                        <div class="d-flex flex-column align-items-center">
+                            <span class="btn-icon">⬜</span>
+                            <small>4:3</small>
+                        </div>
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary shadow-hover" id="aspect169Btn">
+                        <div class="d-flex flex-column align-items-center">
+                            <span class="btn-icon">📺</span>
+                            <small>16:9</small>
+                        </div>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Navigation and Image Adjustment Panel -->
+<div class="row mt-3">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5>🎮 Navigation</h5>
+            </div>
+            <div class="card-body">
+                <div class="navigation-grid mx-auto">
+                    <div></div>
+                    <button type="button" class="btn btn-outline-info shadow-hover" id="upBtn">
+                        <span style="font-size: 1.5rem;">↑</span>
+                    </button>
+                    <div></div>
+                    
+                    <button type="button" class="btn btn-outline-info shadow-hover" id="leftBtn">
+                        <span style="font-size: 1.5rem;">←</span>
+                    </button>
+                    <button type="button" class="btn btn-primary shadow-hover" id="enterBtn">
+                        <span style="font-size: 0.8rem;">ENTER</span>
+                    </button>
+                    <button type="button" class="btn btn-outline-info shadow-hover" id="rightBtn">
+                        <span style="font-size: 1.5rem;">→</span>
+                    </button>
+                    
+                    <div></div>
+                    <button type="button" class="btn btn-outline-info shadow-hover" id="downBtn">
+                        <span style="font-size: 1.5rem;">↓</span>
+                    </button>
+                    <div></div>
+                </div>
+                
+                <div class="row mt-3 g-2">
+                    <div class="col-6">
+                        <button type="button" class="btn btn-outline-warning w-100 shadow-hover" id="menuBtn">
+                            📋 MENU
+                        </button>
+                    </div>
+                    <div class="col-6">
+                        <button type="button" class="btn btn-outline-warning w-100 shadow-hover" id="backBtn">
+                            ↩️ BACK
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Image Adjustment Panel -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5>🔧 Image Adjustment</h5>
+            </div>
+            <div class="card-body">
+                <div class="form-group">
+                    <label for="adjustmentType" class="form-label fw-semibold">Adjustment Type:</label>
+                    <select class="form-select" id="adjustmentType">
+                        <option value="H-IMAGE-SHIFT">↔️ Horizontal Image Shift (-100 to 100)</option>
+                        <option value="V-IMAGE-SHIFT">↕️ Vertical Image Shift (-100 to 100)</option>
+                        <option value="H-KEYSTONE">🔷 Horizontal Keystone (-40 to 40)</option>
+                        <option value="V-KEYSTONE">🔶 Vertical Keystone (-40 to 40)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="adjustmentValue" class="form-label fw-semibold">Value:</label>
+                    <input type="number" class="form-control" id="adjustmentValue" min="-100" max="100" value="0">
+                    <div class="form-text text-muted">
+                        <small>💡 Range will adjust based on selected type</small>
+                    </div>
+                </div>
+                <button type="button" class="btn btn-primary w-100 shadow-hover" id="adjustBtn">
+                    ✨ Apply Adjustment
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Raw Command Panel -->
+<div class="row mt-3">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5>🔧 Raw Command</h5>
+            </div>
+            <div class="card-body">
+                <div class="form-group">
+                    <label for="rawCommand" class="form-label fw-semibold">Raw ASCII Command:</label>
+                    <input type="text" class="form-control" id="rawCommand" placeholder="e.g., ~0000 1\r">
+                    <div class="form-text text-muted">
+                        <small>💡 Use with caution. Refer to projector documentation for command syntax.</small>
+                    </div>
+                </div>
+                <button type="button" class="btn btn-warning shadow-hover" id="sendRawBtn">
+                    ⚡ Send Raw Command
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block plugin_scripts %}
+// Projector Plugin Implementation
+class ProjectorPlugin extends StandardPlugin {
+    constructor() {
+        super({
+            title: 'Projector Control',
+            api_endpoint: 'projector'
+        });
+    }
+    
+    setupPluginEventListeners() {
+        // Power controls
+        document.getElementById('powerOnBtn').addEventListener('click', () => this.sendPowerCommand('on'));
+        document.getElementById('powerOffBtn').addEventListener('click', () => this.sendPowerCommand('off'));
+
+        // Input selection
+        document.getElementById('hdmi1Btn').addEventListener('click', () => this.sendInputCommand('HDMI1'));
+        document.getElementById('hdmi2Btn').addEventListener('click', () => this.sendInputCommand('HDMI2'));
+
+        // Aspect ratio
+        document.getElementById('aspect43Btn').addEventListener('click', () => this.sendAspectCommand('4:3'));
+        document.getElementById('aspect169Btn').addEventListener('click', () => this.sendAspectCommand('16:9'));
+
+        // Navigation
+        document.getElementById('upBtn').addEventListener('click', () => this.sendNavigationCommand('UP'));
+        document.getElementById('leftBtn').addEventListener('click', () => this.sendNavigationCommand('LEFT'));
+        document.getElementById('enterBtn').addEventListener('click', () => this.sendNavigationCommand('ENTER'));
+        document.getElementById('rightBtn').addEventListener('click', () => this.sendNavigationCommand('RIGHT'));
+        document.getElementById('downBtn').addEventListener('click', () => this.sendNavigationCommand('DOWN'));
+        document.getElementById('menuBtn').addEventListener('click', () => this.sendNavigationCommand('MENU'));
+        document.getElementById('backBtn').addEventListener('click', () => this.sendNavigationCommand('BACK'));
+
+        // Image adjustment
+        document.getElementById('adjustmentType').addEventListener('change', () => this.updateAdjustmentRange());
+        document.getElementById('adjustBtn').addEventListener('click', () => this.sendAdjustmentCommand());
+
+        // Raw command
+        document.getElementById('sendRawBtn').addEventListener('click', () => this.sendRawCommand());
+        
+        // Initialize adjustment range
+        this.updateAdjustmentRange();
+    }
+    
+    getAdditionalStatusRows(device) {
+        return `
+            <div class="device-status-row d-flex justify-content-between">
+                <strong>🔌 Current State:</strong>
+                <code>${JSON.stringify(device.current_state || {}, null, 2)}</code>
+            </div>
+        `;
+    }
+    
+    updateAdjustmentRange() {
+        const adjustmentType = document.getElementById('adjustmentType').value;
+        const valueInput = document.getElementById('adjustmentValue');
+        
+        if (adjustmentType.includes('IMAGE-SHIFT')) {
+            valueInput.min = -100;
+            valueInput.max = 100;
+        } else if (adjustmentType.includes('KEYSTONE')) {
+            valueInput.min = -40;
+            valueInput.max = 40;
+        }
+    }
+    
+    async sendPowerCommand(power) {
+        if (!this.selectedDevice) {
+            alert('Please select a device first');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/projector/power', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({device_id: this.selectedDevice, power: power})
+            });
+            
+            const data = await response.json();
+            if (response.ok) {
+                this.logActivity(`Power ${power} command sent to ${this.selectedDevice}`, 'success');
+                this.updateDeviceStatus();
+            } else {
+                throw new Error(data.detail || 'Failed to send power command');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            this.logActivity(`Error sending power command: ${error.message}`, 'error');
+        }
+    }
+    
+    async sendInputCommand(input) {
+        if (!this.selectedDevice) {
+            alert('Please select a device first');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/projector/input', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({device_id: this.selectedDevice, input: input})
+            });
+            
+            const data = await response.json();
+            if (response.ok) {
+                this.logActivity(`Input set to ${input} on ${this.selectedDevice}`, 'success');
+                this.updateDeviceStatus();
+            } else {
+                throw new Error(data.detail || 'Failed to set input');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            this.logActivity(`Error setting input: ${error.message}`, 'error');
+        }
+    }
+    
+    async sendAspectCommand(ratio) {
+        if (!this.selectedDevice) {
+            alert('Please select a device first');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/projector/aspect', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({device_id: this.selectedDevice, ratio: ratio})
+            });
+            
+            const data = await response.json();
+            if (response.ok) {
+                this.logActivity(`Aspect ratio set to ${ratio} on ${this.selectedDevice}`, 'success');
+                this.updateDeviceStatus();
+            } else {
+                throw new Error(data.detail || 'Failed to set aspect ratio');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            this.logActivity(`Error setting aspect ratio: ${error.message}`, 'error');
+        }
+    }
+    
+    async sendNavigationCommand(direction) {
+        if (!this.selectedDevice) {
+            alert('Please select a device first');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/projector/navigate', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({device_id: this.selectedDevice, direction: direction})
+            });
+            
+            const data = await response.json();
+            if (response.ok) {
+                this.logActivity(`Navigation ${direction} sent to ${this.selectedDevice}`, 'success');
+            } else {
+                throw new Error(data.detail || 'Failed to send navigation command');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            this.logActivity(`Error sending navigation command: ${error.message}`, 'error');
+        }
+    }
+    
+    async sendAdjustmentCommand() {
+        if (!this.selectedDevice) {
+            alert('Please select a device first');
+            return;
+        }
+
+        const adjustment = document.getElementById('adjustmentType').value;
+        const value = parseInt(document.getElementById('adjustmentValue').value);
+
+        try {
+            const response = await fetch('/api/projector/adjust', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({device_id: this.selectedDevice, adjustment: adjustment, value: value})
+            });
+            
+            const data = await response.json();
+            if (response.ok) {
+                this.logActivity(`${adjustment} adjusted to ${value} on ${this.selectedDevice}`, 'success');
+                this.updateDeviceStatus();
+            } else {
+                throw new Error(data.detail || 'Failed to adjust image');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            this.logActivity(`Error adjusting image: ${error.message}`, 'error');
+        }
+    }
+    
+    async sendRawCommand() {
+        if (!this.selectedDevice) {
+            alert('Please select a device first');
+            return;
+        }
+
+        const command = document.getElementById('rawCommand').value;
+        if (!command.trim()) {
+            alert('Please enter a command');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/projector/raw', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({device_id: this.selectedDevice, command: command})
+            });
+            
+            const data = await response.json();
+            if (response.ok) {
+                this.logActivity(`Raw command sent to ${this.selectedDevice}: ${command}`, 'success');
+                document.getElementById('rawCommand').value = '';
+            } else {
+                throw new Error(data.detail || 'Failed to send raw command');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            this.logActivity(`Error sending raw command: ${error.message}`, 'error');
+        }
+    }
+    
+    // Override standard methods
+    async startDevice() {
+        this.sendPowerCommand('on');
+    }
+    
+    async restartDevice() {
+        // For projectors, restart means power cycle
+        try {
+            await this.sendPowerCommand('off');
+            setTimeout(() => this.sendPowerCommand('on'), 2000);
+            this.logActivity(`Power cycling ${this.selectedDevice}`, 'info');
+        } catch (error) {
+            this.logActivity(`Error power cycling: ${error.message}`, 'error');
+        }
+    }
+    
+    async stopDevice() {
+        this.sendPowerCommand('off');
+    }
+}
+
+// Initialize the Projector plugin
+const projectorPlugin = new ProjectorPlugin();
+{% endblock %}

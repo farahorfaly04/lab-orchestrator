@@ -1,14 +1,178 @@
 {% extends "base.html" %}
+
+{% block title %}Dashboard - Lab Platform{% endblock %}
+
 {% block content %}
-<h1>Main Orchestrator</h1>
-<ul>
-  {% for p in plugins %}
-  <li><a href="/ui/{{ p }}">{{ p | upper }}</a></li>
-  {% endfor %}
-  {% if not plugins %}
-  <li>No plugins loaded</li>
-  {% endif %}
-</ul>
+<!-- Page Header -->
+<div class="page-header">
+    <h1 class="page-title">🔬 Lab Platform Dashboard</h1>
+    <p class="page-subtitle">Centralized control and monitoring for your laboratory devices</p>
+</div>
+
+<!-- Summary Cards -->
+<div class="summary-cards">
+    <div class="summary-card">
+        <div class="summary-card-value" id="pluginCount">{{ plugins|length or 0 }}</div>
+        <div class="summary-card-label">Active Plugins</div>
+    </div>
+    <div class="summary-card">
+        <div class="summary-card-value" id="deviceCount">-</div>
+        <div class="summary-card-label">Connected Devices</div>
+    </div>
+    <div class="summary-card">
+        <div class="summary-card-value" id="onlineCount">-</div>
+        <div class="summary-card-label">Online Devices</div>
+    </div>
+    <div class="summary-card">
+        <div class="summary-card-value" id="systemStatus">🟢</div>
+        <div class="summary-card-label">System Status</div>
+    </div>
+</div>
+
+<!-- Plugin Cards -->
+{% if plugins %}
+<div class="plugin-grid">
+    {% for p in plugins %}
+    <a href="/ui/{{ p }}" class="plugin-card">
+        <div class="plugin-card-header">
+            <div class="plugin-card-icon">
+                {% if p == 'ndi' %}🎥{% elif p == 'projector' %}📽️{% else %}⚙️{% endif %}
+            </div>
+            <h3 class="plugin-card-title">{{ p.title() }} Control</h3>
+        </div>
+        <div class="plugin-card-body">
+            <p class="plugin-card-description">
+                {% if p == 'ndi' %}
+                Manage NDI devices and video streaming sources across your network. Control viewers, recording, and source switching.
+                {% elif p == 'projector' %}
+                Control projectors via RS232/USB serial communication. Manage power, inputs, and image adjustments.
+                {% else %}
+                Advanced device control and management capabilities for {{ p }} systems.
+                {% endif %}
+            </p>
+            <div class="plugin-card-status">
+                <span>●</span>
+                <span>Active</span>
+            </div>
+        </div>
+    </a>
+    {% endfor %}
+</div>
+{% else %}
+<div class="dashboard-card" style="text-align: center; margin: 3rem auto; max-width: 500px;">
+    <div class="dashboard-card-icon" style="margin: 0 auto 1rem;">
+        ⚠️
+    </div>
+    <h3 class="dashboard-card-title">No Plugins Available</h3>
+    <p class="dashboard-card-description">
+        No plugins are currently loaded in the system. Please check your configuration or contact your administrator.
+    </p>
+</div>
+{% endif %}
+
+<!-- Quick Actions -->
+<div class="dashboard-grid">
+    <div class="dashboard-card">
+        <div class="dashboard-card-icon">📱</div>
+        <h3 class="dashboard-card-title">Device Management</h3>
+        <p class="dashboard-card-description">
+            View and manage all connected devices, monitor their status, and perform maintenance tasks.
+        </p>
+        <a href="/ui/devices" class="dashboard-card-action">
+            <span>Manage Devices</span>
+            <span>→</span>
+        </a>
+    </div>
+    
+    <div class="dashboard-card">
+        <div class="dashboard-card-icon">📊</div>
+        <h3 class="dashboard-card-title">System Monitoring</h3>
+        <p class="dashboard-card-description">
+            Monitor system performance, device health, and network connectivity across your lab infrastructure.
+        </p>
+        <a href="#" class="dashboard-card-action" onclick="refreshSystemStatus()">
+            <span>Refresh Status</span>
+            <span>🔄</span>
+        </a>
+    </div>
+    
+    <div class="dashboard-card">
+        <div class="dashboard-card-icon">⚙️</div>
+        <h3 class="dashboard-card-title">Configuration</h3>
+        <p class="dashboard-card-description">
+            Access system settings, plugin configurations, and advanced management options.
+        </p>
+        <a href="#" class="dashboard-card-action">
+            <span>Settings</span>
+            <span>→</span>
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Load system statistics on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadSystemStats();
+    
+    // Refresh stats every 30 seconds
+    setInterval(loadSystemStats, 30000);
+});
+
+async function loadSystemStats() {
+    try {
+        const response = await fetch('/api/registry');
+        if (!response.ok) throw new Error('Failed to fetch registry');
+        
+        const data = await response.json();
+        const devices = data.devices || {};
+        const deviceCount = Object.keys(devices).length;
+        const onlineCount = Object.values(devices).filter(d => 
+            d.online === true || (d.status && d.status.online === true)
+        ).length;
+        
+        document.getElementById('deviceCount').textContent = deviceCount;
+        document.getElementById('onlineCount').textContent = onlineCount;
+        
+        // Update system status based on device health
+        const systemStatusEl = document.getElementById('systemStatus');
+        if (deviceCount === 0) {
+            systemStatusEl.textContent = '⚪';
+            systemStatusEl.parentElement.querySelector('.summary-card-label').textContent = 'No Devices';
+        } else if (onlineCount === deviceCount) {
+            systemStatusEl.textContent = '🟢';
+            systemStatusEl.parentElement.querySelector('.summary-card-label').textContent = 'All Online';
+        } else if (onlineCount > 0) {
+            systemStatusEl.textContent = '🟡';
+            systemStatusEl.parentElement.querySelector('.summary-card-label').textContent = 'Partial Online';
+        } else {
+            systemStatusEl.textContent = '🔴';
+            systemStatusEl.parentElement.querySelector('.summary-card-label').textContent = 'All Offline';
+        }
+    } catch (error) {
+        console.error('Error loading system stats:', error);
+        document.getElementById('deviceCount').textContent = 'Error';
+        document.getElementById('onlineCount').textContent = 'Error';
+        document.getElementById('systemStatus').textContent = '❌';
+    }
+}
+
+function refreshSystemStatus() {
+    const button = event.target.closest('.dashboard-card-action');
+    const originalText = button.innerHTML;
+    
+    button.innerHTML = '<span>Refreshing...</span><span>⏳</span>';
+    button.style.pointerEvents = 'none';
+    
+    loadSystemStats().finally(() => {
+        setTimeout(() => {
+            button.innerHTML = originalText;
+            button.style.pointerEvents = 'auto';
+        }, 1000);
+    });
+}
+</script>
 {% endblock %}
 
 
